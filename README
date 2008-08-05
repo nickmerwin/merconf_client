@@ -1,0 +1,6 @@
+==============================
+MerConf Lite v.1 - Flex Client
+==============================
+ 
+* To set up in Flex Builder 3:
+ - add external source folder: /Applications/Red5/swf/DEV_Source/classes 
