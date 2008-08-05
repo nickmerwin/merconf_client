@@ -145,13 +145,17 @@
 	public function debug(text:String):void {
 		_debug.text = text + "\n" + _debug.text;
 	}
-	]]>
+	]]> 
 	</mx:Script>
 	
-	<mx:VBox width="100%" height="100%">
+	<mx:VBox width="100%" height="100%" backgroundColor="#000000">
 		<mx:Tile color="0xffffff" horizontalGap="0" verticalGap="0" id="videoBoxes" width="100%" height="100%"></mx:Tile>
-	
-		<mx:Box width="100%" height="100" id="_debug_window" visible="false">
+		
+		<mx:Canvas width="100%">
+			<mx:Image source="@Embed('lemur.png')" bottom="3" right="3" width="50" height="50"/>	
+		</mx:Canvas>
+		
+		<mx:Box width="0" height="0" id="_debug_window" visible="false">
 			<mx:TextArea height="100%" width="100%" id="_debug"/>
 		</mx:Box>	
 		
