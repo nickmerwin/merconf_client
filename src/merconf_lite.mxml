@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml"
+	xmlns:util="org.red5.ui.*" 
+	xmlns:components="components.*"
+	layout="absolute"
+	horizontalAlign="center"
+	initialize="init()"
+	backgroundColor="#ffffff"
+	backgroundImage=""
+	backgroundAlpha="0"
+>
+	<mx:Script>
+	<![CDATA[
+	// ======== MERCONF_LITE v.0.1 =========
+	
+	import mx.events.IndexChangedEvent;
+	import mx.controls.TextArea;	
+	import mx.controls.Alert;
+	import flash.system.Security;
+	import flash.system.SecurityPanel;
+	import flash.events.*;
+	import flash.media.*;
+	import flash.net.*;
+	import org.red5.net.*;
+	import components.videoBox;
+	
+	//video size
+	[Bindable] public var vw : int = 316;
+	[Bindable] public var vh : int = 243;
+	
+	public var nc : NetConnection;
+	public var myStream : NetStream;
+	public var myKey: String;
+	
+	// Red5 returns
+	public var SO : SharedObject;
+	
+	// my interfaces
+ 	public var camera : Camera;
+ 	public var microphone : Microphone;
+	
+	//////////////////// App Init ////////////////////
+	public function init():void {
+		
+		myKey = Math.random().toString().slice(2);
+		
+		// get camera
+		camera = Camera.getCamera();
+		if(camera == null || camera.name == "DV Video" || camera.name == "IIDC FireWire Video"){
+			Security.showSettings(SecurityPanel.CAMERA);
+		}
+ 		camera.setMode( vw, vh, 24 );
+ 		camera.setQuality( 0, 60 );
+ 		
+ 		// get microphone
+ 		microphone = Microphone.getMicrophone();
+ 		microphone.setLoopBack( true );
+ 		microphone.setUseEchoSuppression( true );
+ 		var transform : SoundTransform = microphone.soundTransform;
+		transform.volume = 0;
+		microphone.soundTransform = transform;
+		microphone.gain = 50;
+		microphone.rate = 11; // 22 default
+		microphone.setSilenceLevel( 1, 2000 );
+		
+		// open connection
+		nc = new NetConnection();
+ 		nc.objectEncoding = ObjectEncoding.AMF0;
+ 		nc.client = this; // setup server callback listener
+ 		nc.addEventListener( NetStatusEvent.NET_STATUS, netConnectionStatus );
+ 		nc.addEventListener( AsyncErrorEvent.ASYNC_ERROR , netConnectionStatus );
+ 		
+ 		nc.connect("rtmp:/merconf/conf",myKey);
+	}
+	
+	////////////////////// SO setup /////////////////////
+	public function setupSO():void{
+ 		SO = SharedObject.getRemote("SO", nc.uri, false);
+ 		SO.addEventListener(SyncEvent.SYNC, syncSO, false);
+  		SO.connect(nc);
+	}
+	
+	public function syncSO(event:Object):void{
+		publish();
+		
+		var streams:Array = SO.data.streams;
+		debug("streams: "+streams);
+		if(!streams) return;
+		videoBoxes.removeAllChildren();
+		for(var i:int = 0; i < streams.length; i++) addStream(streams[i]);
+	}
+	
+	/////////////// attach Stream to videoBox ////////////////
+	public function addStream(streamName:String):void{
+		var vbox:videoBox = new videoBox();
+		videoBoxes.addChild(vbox);
+		vbox.key = streamName;
+		vbox.video = new Video( vw, vh );
+		
+		if(streamName == myKey){
+			vbox.video.attachCamera( camera ); // use my camera for my feed
+		} else {
+			vbox.attachStream(streamName);
+		}
+	}
+	
+	
+	//////////////////////  Publish myStream ////////////////////
+	public function publish():void {		
+		if(myStream) return;
+  		myStream = new NetStream(nc);
+  		myStream.attachCamera(camera);
+		myStream.attachAudio(microphone);
+		myStream.publish(myKey, "live");
+	}
+		
+	//////////////// Net Status ////////////////
+	public function netStreamStatus( event:Object ):void {
+		if(event.info.code == "NetStream.Play.InsufficientBW")
+			debug("netStreamStatus: "+event.info.toString()+", code:"+event.info.code);
+	}
+	
+	
+	public function netConnectionStatus( event : Object ):void {
+		if(event.info == null) return;
+		var info : Object = event.info;
+		
+		var statusCode : String = info.code;
+		switch ( statusCode ) {
+			case "NetConnection.Connect.Success" :
+     			setupSO();
+				break;
+			case "NetConnection.Connect.Failed" : 
+				Alert.show("We couldn't connect you to the conference.", "Sorry");
+				break;
+			case "NetConnection.Connect.Closed" : break;
+			case "NetConnection.Connect.InvalidApp" : break;
+			case "NetConnection.Connect.AppShutDown" : break;
+			case "NetConnection.Connect.Rejected" : break;
+		}
+		debug("netConnectionStatus: "+statusCode);
+	}
+	
+	///////////////////// DEBUG /////////////////////
+	public function debug(text:String):void {
+		_debug.text = text + "\n" + _debug.text;
+	}
+	]]>
+	</mx:Script>
+	
+	<mx:VBox width="100%" height="100%">
+		<mx:Tile color="0xffffff" horizontalGap="0" verticalGap="0" id="videoBoxes" width="100%" height="100%"></mx:Tile>
+	
+		<mx:Box width="100%" height="100" id="_debug_window" visible="false">
+			<mx:TextArea height="100%" width="100%" id="_debug"/>
+		</mx:Box>	
+		
+	</mx:VBox>
+
+</mx:Application>

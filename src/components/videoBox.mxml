@@ -1,0 +1,25 @@
+<mx:Canvas 
+	xmlns:mx="http://www.adobe.com/2006/mxml" 
+	xmlns:util="org.red5.ui.*">
+
+	<mx:Script>
+	<![CDATA[
+		[Bindable] public var video:Video;
+		[Bindable] public var stream:NetStream;
+		[Bindable] public var clientId:NetStream;
+		public var key:String = "";
+		
+		public function attachStream(name:String):Boolean{
+			stream = new NetStream(parentDocument.nc);
+			stream.play(name, -1);
+			stream.addEventListener( AsyncErrorEvent.ASYNC_ERROR , parentDocument.netStreamStatus ); // errored out on info.code
+			stream.addEventListener( IOErrorEvent.IO_ERROR  , parentDocument.netStreamStatus );
+			stream.addEventListener( NetStatusEvent.NET_STATUS  , parentDocument.netStreamStatus );
+			video.attachNetStream( stream );
+			return true;
+		} 
+	]]>
+	</mx:Script>
+
+	<util:VideoContainer id="videoContainer" video="{ video }" height="{ parentDocument.vh }" width="{ parentDocument.vw }" />
+</mx:Canvas>
