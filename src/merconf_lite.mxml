@@ -42,6 +42,7 @@
 	//////////////////// App Init ////////////////////
 	public function init():void {
 		
+		// generate random stream name
 		myKey = Math.random().toString().slice(2);
 		
 		// get camera
@@ -63,28 +64,29 @@
 		microphone.rate = 11; // 22 default
 		microphone.setSilenceLevel( 1, 2000 );
 		
-		// open connection
+		// create connection
 		nc = new NetConnection();
  		nc.objectEncoding = ObjectEncoding.AMF0;
  		nc.client = this; // setup server callback listener
  		nc.addEventListener( NetStatusEvent.NET_STATUS, netConnectionStatus );
  		nc.addEventListener( AsyncErrorEvent.ASYNC_ERROR , netConnectionStatus );
  		
- 		nc.connect("rtmp:/merconf/conf",myKey);
+ 		// connect to Red5
+ 		nc.connect("rtmp:/merconf/conf", myKey);
 	}
 	
-	////////////////////// SO setup /////////////////////
+	////////////////////// Shared Object setup /////////////////////
 	public function setupSO():void{
  		SO = SharedObject.getRemote("SO", nc.uri, false);
  		SO.addEventListener(SyncEvent.SYNC, syncSO, false);
   		SO.connect(nc);
 	}
 	
+	// called from so.setAttribute("streams",streams) on server
 	public function syncSO(event:Object):void{
-		publish();
+		if(!myStream) publish(); // start streaming to server
 		
 		var streams:Array = SO.data.streams;
-		debug("streams: "+streams);
 		if(!streams) return;
 		videoBoxes.removeAllChildren();
 		for(var i:int = 0; i < streams.length; i++) addStream(streams[i]);
@@ -107,7 +109,6 @@
 	
 	//////////////////////  Publish myStream ////////////////////
 	public function publish():void {		
-		if(myStream) return;
   		myStream = new NetStream(nc);
   		myStream.attachCamera(camera);
 		myStream.attachAudio(microphone);
@@ -120,7 +121,7 @@
 			debug("netStreamStatus: "+event.info.toString()+", code:"+event.info.code);
 	}
 	
-	
+	//////////////// Respond to Connection Events //////////////
 	public function netConnectionStatus( event : Object ):void {
 		if(event.info == null) return;
 		var info : Object = event.info;
@@ -157,8 +158,7 @@
 		
 		<mx:Box width="0" height="0" id="_debug_window" visible="false">
 			<mx:TextArea height="100%" width="100%" id="_debug"/>
-		</mx:Box>	
-		
+		</mx:Box>
 	</mx:VBox>
 
 </mx:Application>
